@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dashboard · Ciro Gomes 2026 — Mídia Digital
 
-## Getting Started
+Painel de performance da campanha de **mídia digital (Meta Ads / Instagram)** de
+Ciro Gomes, pré-candidato ao Governo do Ceará em 2026.
 
-First, run the development server:
+Construído com **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS** e
+**Recharts**. Tema roxo com alternância **claro/escuro** (padrão escuro),
+responsivo (mobile-first) e com tela de carregamento.
+
+Recursos: KPIs com custos/taxas embutidos no mesmo card, **seletores de métrica**
+(pílulas) em vários gráficos, **mapa de calor** com métrica selecionável, e
+**tabela de criativos ordenável** por qualquer coluna.
+
+## Como rodar
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # desenvolvimento  -> http://localhost:3000
+# ou
+npm run build && npm run start   # produção
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Não há variáveis de ambiente obrigatórias — os dados vêm da função Supabase
+`CiroGomes2026`, consumida através do proxy interno `/api/data` (evita CORS e
+mantém a chamada no servidor).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Páginas
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Rota | Bloco | Conteúdo |
+|------|-------|----------|
+| `/` | Visão geral | KPIs, combo alcance×engajamento, funil de vídeo, top criativos, investimento diário, composição do engajamento |
+| `/criativos` | Criativos | Cards com thumbnail, métricas e link para o post no Instagram; ordenação por engajamento / alcance / views / investimento / CPE |
+| `/publico` | Público | Barras por faixa etária, rosca por gênero, **heatmap idade × gênero**, alcance e CPE por faixa |
+| `/campanhas` | Campanhas | Comparativo das campanhas, engajamento diário por campanha, composição, tabela lado a lado |
 
-## Learn More
+Tipos de gráfico usados: barras verticais e horizontais, rosca/pizza, linhas,
+área, **combo (barras + linha em eixo único)**, **funil** e **heatmap**.
 
-To learn more about Next.js, take a look at the following resources:
+## Arquitetura
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/
+  layout.tsx          Root: fontes, DataProvider, Shell (sidebar)
+  page.tsx            Visão geral
+  criativos|publico|campanhas/page.tsx
+  api/data/route.ts   Proxy server-side para a função Supabase
+  not-found.tsx       404 com rota de volta
+components/
+  DataProvider.tsx    Busca os dados 1x, tela de carregamento + erro
+  Shell.tsx           Sidebar desktop + drawer mobile
+  charts/             ComboChart, TimeSeriesArea, HBar, VBar, Donut, Funnel, Heatmap, StackedBar
+  ui/                 KpiCard, ChartCard, PageHeader, Insight
+lib/
+  data.ts             Normalização + agregações (totais, por dia/campanha/criativo/idade/gênero)
+  format.ts           Formatação pt-BR (R$, %, mil/Mi, datas)
+  theme.ts            Paleta de gráficos (validada para daltonismo no fundo escuro)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Notas técnicas
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Roteamento sem 404 ao recarregar:** rotas reais do App Router — cada página é
+  servida pelo servidor; recarregar `/criativos` etc. responde 200.
+- **Tema claro/escuro:** `ThemeProvider` grava a escolha em `localStorage` e um
+  script inline aplica o tema antes da 1ª pintura (sem flash). Os gráficos leem a
+  paleta do tema pelo contexto.
+- **Paleta acessível:** as cores de série (nos dois temas) passam nos testes de
+  contraste e separação para daltonismo (protanopia/deuteranopia) — validadas com
+  o script da skill de dataviz sobre a superfície de cada tema.
+- **Thumbnails:** renderizadas direto do CDN da Meta com `referrerPolicy` e
+  fallback caso a URL expire.

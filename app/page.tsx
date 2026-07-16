@@ -1,101 +1,206 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMemo, useState } from "react";
+import { useData } from "@/components/DataProvider";
+import { useTheme } from "@/components/ThemeProvider";
+import {
+  totals,
+  byDate,
+  byCampaign,
+  byCreative,
+  videoFunnel,
+} from "@/lib/data";
+import {
+  brl,
+  brlPrecise,
+  compact,
+  compactBRL,
+  int,
+  pct,
+  rangeLabel,
+  dayLabel,
+} from "@/lib/format";
+import PageHeader, { RangePill } from "@/components/ui/PageHeader";
+import KpiCard from "@/components/ui/KpiCard";
+import ChartCard, { LegendDot } from "@/components/ui/ChartCard";
+import Insight, { Hi } from "@/components/ui/Insight";
+import MetricToggle from "@/components/ui/MetricToggle";
+import ComboChart from "@/components/charts/ComboChart";
+import TimeSeriesArea from "@/components/charts/TimeSeriesArea";
+import HBar from "@/components/charts/HBar";
+import Donut from "@/components/charts/Donut";
+import Funnel from "@/components/charts/Funnel";
+
+type MetricKey = "reach" | "engagement" | "spend" | "clicks" | "videoViews";
+
+export default function VisaoGeral() {
+  const { rows, days } = useData();
+  const { palette } = useTheme();
+  const [metric, setMetric] = useState<MetricKey>("engagement");
+
+  const { t, daily, campaignDonut, creativeBars, funnel, topCreative } = useMemo(() => {
+    const t = totals(rows);
+    const daily = byDate(rows).map((d) => ({
+      date: d.key,
+      reach: d.reach,
+      engagement: d.engagement,
+      spend: d.spend,
+      clicks: d.clicks,
+      videoViews: d.videoViews,
+    }));
+    const campaignDonut = byCampaign(rows).map((c) => ({ label: c.key, value: c.spend }));
+    const creatives = byCreative(rows);
+    const creativeBars = creatives.slice(0, 5).map((c) => ({ label: c.key, value: c.engagement }));
+    return { t, daily, campaignDonut, creativeBars, funnel: videoFunnel(rows), topCreative: creatives[0] };
+  }, [rows]);
+
+  const METRICS: { key: MetricKey; label: string; color: string; fmt: (v: number) => string }[] = [
+    { key: "reach", label: "Alcance", color: palette.cyanSeries, fmt: (v) => compact(v) },
+    { key: "engagement", label: "Engajamento", color: palette.series[0], fmt: (v) => compact(v) },
+    { key: "spend", label: "Investimento", color: palette.series[2], fmt: (v) => brl(v) },
+    { key: "clicks", label: "Cliques", color: palette.series[3], fmt: (v) => compact(v) },
+    { key: "videoViews", label: "Visualizações", color: palette.series[4], fmt: (v) => compact(v) },
+  ];
+  const current = METRICS.find((m) => m.key === metric)!;
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div>
+      <PageHeader title="Visão geral" meta={<RangePill>{rangeLabel(days)}</RangePill>} />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      {/* Rich KPIs — big number + folded rates/costs */}
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        <KpiCard
+          value={brl(t.spend)}
+          label="Investido"
+          accent="violet"
+          metrics={[
+            { label: "CPM", value: brl(t.cpm) },
+            { label: "CPC", value: brl(t.cpc) },
+          ]}
+        />
+        <KpiCard
+          value={int(t.engagement)}
+          label="Engajamentos"
+          accent="cyan"
+          delay={50}
+          metrics={[
+            { label: "CPE", value: brlPrecise(t.cpe) },
+            { label: "Taxa engaj.", value: pct(t.engRate, 1) },
+          ]}
+        />
+        <KpiCard
+          value={compact(t.reach)}
+          label="Alcance"
+          accent="amber"
+          delay={100}
+          metrics={[
+            { label: "Cliques", value: int(t.clicks) },
+            { label: "CTR", value: pct(t.ctr) },
+          ]}
+        />
+        <KpiCard
+          value={compact(t.videoViews)}
+          label="Visualizações"
+          accent="green"
+          delay={150}
+          metrics={[
+            { label: "Assistiram 100%", value: pct(t.vtr, 1) },
+            { label: "Custo/view", value: brlPrecise(t.costPerView) },
+          ]}
+        />
+      </div>
+
+      {/* Analysis — moved up, right after the big numbers */}
+      <div className="mt-4">
+        <Insight delay={180}>
+          Volume alto de engajamento com <Hi>CPE de {brlPrecise(t.cpe)}</Hi> — mídia eficiente e
+          bem distribuída. Alcance de <Hi>{compact(t.reach)}</Hi> pessoas gerou{" "}
+          <Hi>{int(t.engagement)}</Hi> engajamentos (<Hi>{pct(t.engRate, 0)}</Hi> de taxa) e{" "}
+          <Hi>{int(t.clicks)}</Hi> cliques no link. O criativo <Hi>«{topCreative?.key}»</Hi> lidera,
+          e <Hi>{pct(t.vtr, 0)}</Hi> das visualizações chegam ao fim do vídeo.
+        </Insight>
+      </div>
+
+      {/* Row A — hero, solo full-width, metric selectable */}
+      <div className="mt-4">
+        <ChartCard
+          title="Evolução diária no período"
+          subtitle="Escolha a métrica para acompanhar dia a dia"
+          right={<MetricToggle options={METRICS} value={metric} onChange={setMetric} />}
+          delay={200}
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+          <TimeSeriesArea
+            data={daily}
+            xKey="date"
+            series={[{ key: current.key, name: current.label, color: current.color }]}
+            xTickFormatter={dayLabel}
+            valueFormatter={(v) => current.fmt(v)}
+            height={300}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        </ChartCard>
+      </div>
+
+      {/* Row B — 7/5 */}
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <ChartCard
+          className="lg:col-span-7"
+          title="Alcance e engajamento por dia"
+          subtitle="Barras: alcance · Linha: engajamento (mesma escala)"
+          right={
+            <div className="hidden items-center gap-4 sm:flex">
+              <LegendDot color={palette.cyanSeries} label="Alcance" />
+              <LegendDot color={palette.series[0]} label="Engajamento" />
+            </div>
+          }
+          delay={240}
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <ComboChart
+            data={daily}
+            xKey="date"
+            bar={{ key: "reach", name: "Alcance", color: palette.cyanSeries }}
+            line={{ key: "engagement", name: "Engajamento", color: palette.series[0] }}
+            xTickFormatter={dayLabel}
+            valueFormatter={(v) => int(v)}
+            height={300}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        </ChartCard>
+
+        <ChartCard
+          className="lg:col-span-5"
+          title="Retenção de vídeo"
+          subtitle="Das visualizações até assistir 100%"
+          delay={280}
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+          <Funnel data={funnel} />
+        </ChartCard>
+      </div>
+
+      {/* Row C — 8/4 */}
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <ChartCard
+          className="lg:col-span-8"
+          title="Top criativos por engajamento"
+          subtitle="Ranking dos anúncios ativos"
+          delay={300}
+        >
+          <HBar data={creativeBars} valueFormatter={(v) => compact(v)} labelWidth={160} height={300} />
+        </ChartCard>
+
+        <ChartCard
+          className="lg:col-span-4"
+          title="Investimento por campanha"
+          subtitle="Distribuição do valor investido"
+          delay={340}
+        >
+          <Donut
+            data={campaignDonut}
+            centerLabel="investido"
+            centerValue={compactBRL(t.spend)}
+            valueFormatter={(v) => brl(v)}
+            height={188}
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </ChartCard>
+      </div>
     </div>
   );
 }
