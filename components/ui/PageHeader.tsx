@@ -9,7 +9,7 @@ export default function PageHeader({
   meta?: ReactNode;
 }) {
   return (
-    <header className="animate-in mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
+    <header className="animate-in relative z-20 mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
       <h1 className="text-[clamp(1.7rem,4vw,2.5rem)] font-semibold leading-tight tracking-tight">
         {title}
       </h1>

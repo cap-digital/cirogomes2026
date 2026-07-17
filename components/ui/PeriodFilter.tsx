@@ -101,24 +101,29 @@ export default function PeriodFilter() {
           <p className="px-3 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-3">
             Personalizado
           </p>
-          <div className="flex items-center gap-2 px-2">
-            <input
-              type="date"
-              value={from}
-              min={bounds.min}
-              max={bounds.max}
-              onChange={(e) => setFrom(e.target.value)}
-              className="w-full rounded-lg border border-line bg-wash-1 px-2 py-1.5 text-[12px] text-ink outline-none focus:border-[var(--border-violet)]"
-            />
-            <span className="shrink-0 text-ink-3">–</span>
-            <input
-              type="date"
-              value={to}
-              min={bounds.min}
-              max={bounds.max}
-              onChange={(e) => setTo(e.target.value)}
-              className="w-full rounded-lg border border-line bg-wash-1 px-2 py-1.5 text-[12px] text-ink outline-none focus:border-[var(--border-violet)]"
-            />
+          <div className="space-y-2 px-2">
+            <label className="block">
+              <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-ink-3">De</span>
+              <input
+                type="date"
+                value={from}
+                min={bounds.min}
+                max={bounds.max}
+                onChange={(e) => setFrom(e.target.value)}
+                className="w-full rounded-lg border border-line bg-wash-1 px-2 py-1.5 text-[12px] text-ink outline-none focus:border-[var(--border-violet)]"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-ink-3">Até</span>
+              <input
+                type="date"
+                value={to}
+                min={bounds.min}
+                max={bounds.max}
+                onChange={(e) => setTo(e.target.value)}
+                className="w-full rounded-lg border border-line bg-wash-1 px-2 py-1.5 text-[12px] text-ink outline-none focus:border-[var(--border-violet)]"
+              />
+            </label>
           </div>
           <button
             onClick={() => {
