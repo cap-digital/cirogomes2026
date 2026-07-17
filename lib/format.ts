@@ -69,6 +69,24 @@ export function rangeLabel(days: string[]): string {
   return `${a[2]} ${MONTHS[a[1] - 1]} – ${b[2]} ${MONTHS[b[1] - 1]} ${b[0]}`;
 }
 
+/** Today's date (America/São_Paulo) as YYYY-MM-DD — for period presets. */
+export function spToday(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+/** Add (or subtract) days to a YYYY-MM-DD string, timezone-safe. */
+export function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+
 /** Human date-time for "atualizado em". */
 export function updatedAt(iso: string): string {
   try {

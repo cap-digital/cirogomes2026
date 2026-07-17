@@ -22,10 +22,25 @@ export interface RawRow {
   video_p100_watched_actions_video_view: number | string;
 }
 
+/** Followers tab — only campaign-level, no date/gender granularity. */
+export interface FollowerRaw {
+  campaign: string;
+  "followers gained": number | string;
+}
+
 export interface ApiResponse {
   success: boolean;
   consolidado: RawRow[];
+  seguidores?: FollowerRaw[];
   timestamp: string;
+}
+
+export type PeriodKey = "all" | "yesterday" | "last7" | "last30" | "custom";
+
+export interface Period {
+  key: PeriodKey;
+  from: string; // YYYY-MM-DD inclusive
+  to: string; // YYYY-MM-DD inclusive
 }
 
 /** Normalized numeric row (empty strings coerced to 0, dates trimmed to YYYY-MM-DD). */

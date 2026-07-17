@@ -1,13 +1,26 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
-import type { ApiResponse, Row } from "@/lib/types";
-import { normalize, uniqueDays } from "@/lib/data";
+import type { ApiResponse, Period, PeriodKey, Row } from "@/lib/types";
+import {
+  normalize,
+  normalizeFollowers,
+  followersSum as sumFollowers,
+  filterByPeriod,
+  uniqueDays,
+} from "@/lib/data";
+import { spToday, addDays } from "@/lib/format";
 import LoadingScreen from "./LoadingScreen";
 
 interface DataState {
-  rows: Row[];
-  days: string[];
+  rows: Row[]; // filtered by the active period
+  allRows: Row[]; // unfiltered
+  days: string[]; // days present in the filtered rows
+  followers: Record<string, number>; // gained per campaign (campaign-level only)
+  followersSum: number;
+  period: Period; // resolved { key, from, to }
+  setPeriod: (key: PeriodKey, range?: { from: string; to: string }) => void;
+  bounds: { min: string; max: string };
   timestamp: string;
   refetch: () => void;
 }
@@ -23,10 +36,14 @@ export function useData(): DataState {
 type Status = "loading" | "ready" | "error";
 
 export default function DataProvider({ children }: { children: React.ReactNode }) {
-  const [rows, setRows] = useState<Row[]>([]);
+  const [allRows, setAllRows] = useState<Row[]>([]);
+  const [followers, setFollowers] = useState<Record<string, number>>({});
   const [timestamp, setTimestamp] = useState("");
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<string>("");
+
+  const [periodKey, setPeriodKey] = useState<PeriodKey>("all");
+  const [custom, setCustom] = useState<{ from: string; to: string } | null>(null);
 
   const load = useCallback(async () => {
     setStatus("loading");
@@ -36,7 +53,8 @@ export default function DataProvider({ children }: { children: React.ReactNode }
       if (!res.ok) throw new Error(`Erro ${res.status} ao buscar os dados`);
       const json: ApiResponse = await res.json();
       if (!json?.consolidado?.length) throw new Error("Resposta sem dados");
-      setRows(normalize(json.consolidado));
+      setAllRows(normalize(json.consolidado));
+      setFollowers(normalizeFollowers(json.seguidores));
       setTimestamp(json.timestamp || new Date().toISOString());
       setStatus("ready");
     } catch (e) {
@@ -49,9 +67,44 @@ export default function DataProvider({ children }: { children: React.ReactNode }
     load();
   }, [load]);
 
+  const bounds = useMemo(() => {
+    const ds = uniqueDays(allRows);
+    return { min: ds[0] ?? "", max: ds[ds.length - 1] ?? "" };
+  }, [allRows]);
+
+  const period = useMemo<Period>(() => {
+    if (periodKey === "custom" && custom) return { key: "custom", from: custom.from, to: custom.to };
+    const today = spToday();
+    if (periodKey === "yesterday") {
+      const y = addDays(today, -1);
+      return { key: "yesterday", from: y, to: y };
+    }
+    if (periodKey === "last7") return { key: "last7", from: addDays(today, -6), to: today };
+    if (periodKey === "last30") return { key: "last30", from: addDays(today, -29), to: today };
+    return { key: "all", from: bounds.min, to: bounds.max };
+  }, [periodKey, custom, bounds]);
+
+  const rows = useMemo(() => filterByPeriod(allRows, period.from, period.to), [allRows, period]);
+
+  const setPeriod = useCallback((key: PeriodKey, range?: { from: string; to: string }) => {
+    setPeriodKey(key);
+    if (key === "custom" && range) setCustom(range);
+  }, []);
+
   const value = useMemo<DataState>(
-    () => ({ rows, days: uniqueDays(rows), timestamp, refetch: load }),
-    [rows, timestamp, load]
+    () => ({
+      rows,
+      allRows,
+      days: uniqueDays(rows),
+      followers,
+      followersSum: sumFollowers(followers),
+      period,
+      setPeriod,
+      bounds,
+      timestamp,
+      refetch: load,
+    }),
+    [rows, allRows, followers, period, setPeriod, bounds, timestamp, load]
   );
 
   if (status === "loading") return <LoadingScreen />;

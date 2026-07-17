@@ -9,18 +9,12 @@ import {
   byCampaign,
   byCreative,
   videoFunnel,
+  followerMetrics,
 } from "@/lib/data";
-import {
-  brl,
-  brlPrecise,
-  compact,
-  compactBRL,
-  int,
-  pct,
-  rangeLabel,
-  dayLabel,
-} from "@/lib/format";
-import PageHeader, { RangePill } from "@/components/ui/PageHeader";
+import { brl, brlPrecise, compact, compactBRL, int, pct, dayLabel } from "@/lib/format";
+import PageHeader from "@/components/ui/PageHeader";
+import PeriodFilter from "@/components/ui/PeriodFilter";
+import EmptyPeriod from "@/components/ui/EmptyPeriod";
 import KpiCard from "@/components/ui/KpiCard";
 import ChartCard, { LegendDot } from "@/components/ui/ChartCard";
 import Insight, { Hi } from "@/components/ui/Insight";
@@ -34,9 +28,11 @@ import Funnel from "@/components/charts/Funnel";
 type MetricKey = "reach" | "engagement" | "spend" | "clicks" | "videoViews";
 
 export default function VisaoGeral() {
-  const { rows, days } = useData();
+  const { rows, allRows, followersSum } = useData();
   const { palette } = useTheme();
   const [metric, setMetric] = useState<MetricKey>("engagement");
+
+  const fm = useMemo(() => followerMetrics(allRows, followersSum), [allRows, followersSum]);
 
   const { t, daily, campaignDonut, creativeBars, funnel, topCreative } = useMemo(() => {
     const t = totals(rows);
@@ -63,12 +59,21 @@ export default function VisaoGeral() {
   ];
   const current = METRICS.find((m) => m.key === metric)!;
 
+  if (!rows.length) {
+    return (
+      <div>
+        <PageHeader title="Visão geral" meta={<PeriodFilter />} />
+        <EmptyPeriod />
+      </div>
+    );
+  }
+
   return (
     <div>
-      <PageHeader title="Visão geral" meta={<RangePill>{rangeLabel(days)}</RangePill>} />
+      <PageHeader title="Visão geral" meta={<PeriodFilter />} />
 
       {/* Rich KPIs — big number + folded rates/costs */}
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3.5 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-5">
         <KpiCard
           value={brl(t.spend)}
           label="Investido"
@@ -106,6 +111,17 @@ export default function VisaoGeral() {
           metrics={[
             { label: "Assistiram 100%", value: pct(t.vtr, 1) },
             { label: "Custo/view", value: brlPrecise(t.costPerView) },
+          ]}
+        />
+        <KpiCard
+          value={int(followersSum)}
+          label="Novos seguidores"
+          sub="acumulado · Instagram"
+          accent="magenta"
+          delay={200}
+          metrics={[
+            { label: "Custo/seg", value: brl(fm.cpf) },
+            { label: "Taxa (alcance)", value: pct(fm.rateReach, 2) },
           ]}
         />
       </div>

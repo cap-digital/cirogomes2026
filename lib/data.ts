@@ -1,4 +1,4 @@
-import type { RawRow, Row } from "./types";
+import type { FollowerRaw, RawRow, Row } from "./types";
 
 /** Coerce Meta's empty-string-as-null metric values into numbers. */
 export function num(v: unknown): number {
@@ -38,6 +38,36 @@ export function cleanTag(s: string): string {
   const inner = s.replace(/[[\]]/g, "").trim();
   if (!inner) return "";
   return inner.charAt(0).toUpperCase() + inner.slice(1).toLowerCase();
+}
+
+/** Followers gained per campaign (keyed by cleaned campaign name). Campaign-level only. */
+export function normalizeFollowers(raw?: FollowerRaw[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (const r of raw ?? []) {
+    const key = cleanTag(r.campaign);
+    map[key] = (map[key] ?? 0) + num(r["followers gained"]);
+  }
+  return map;
+}
+
+export const followersSum = (map: Record<string, number>): number =>
+  Object.values(map).reduce((a, b) => a + b, 0);
+
+/** Derived follower metrics. Computed from all-time data (followers has no date). */
+export function followerMetrics(allRows: Row[], followers: number) {
+  const s = totals(allRows);
+  return {
+    followers,
+    cpf: safeDiv(s.spend, followers), // custo por seguidor
+    rateReach: safeDiv(followers, s.reach) * 100, // % do alcance que virou seguidor
+    rateEng: safeDiv(followers, s.engagement) * 100,
+  };
+}
+
+/** Filter dated rows to an inclusive [from, to] YYYY-MM-DD window. */
+export function filterByPeriod(rows: Row[], from: string, to: string): Row[] {
+  if (!from || !to) return rows;
+  return rows.filter((r) => r.date >= from && r.date <= to);
 }
 
 const SUM_KEYS = [

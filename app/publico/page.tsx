@@ -12,7 +12,9 @@ import {
   totals,
 } from "@/lib/data";
 import { brl, brlPrecise, compact, int, pct } from "@/lib/format";
-import PageHeader, { RangePill } from "@/components/ui/PageHeader";
+import PageHeader from "@/components/ui/PageHeader";
+import PeriodFilter from "@/components/ui/PeriodFilter";
+import EmptyPeriod from "@/components/ui/EmptyPeriod";
 import KpiCard from "@/components/ui/KpiCard";
 import ChartCard from "@/components/ui/ChartCard";
 import Insight, { Hi } from "@/components/ui/Insight";
@@ -85,9 +87,18 @@ export default function Publico() {
   );
   const grid = useMemo(() => ageGenderGrid(rows, heatMetric), [rows, heatMetric]);
 
+  if (!rows.length) {
+    return (
+      <div>
+        <PageHeader title="Público" meta={<PeriodFilter />} />
+        <EmptyPeriod />
+      </div>
+    );
+  }
+
   return (
     <div>
-      <PageHeader title="Público" meta={<RangePill>Instagram · Meta Ads</RangePill>} />
+      <PageHeader title="Público" meta={<PeriodFilter />} />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3 sm:gap-4">

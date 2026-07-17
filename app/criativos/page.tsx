@@ -4,7 +4,9 @@ import { useMemo } from "react";
 import { useData } from "@/components/DataProvider";
 import { byCreative, totals } from "@/lib/data";
 import { brl, brlPrecise, compact, int, pct } from "@/lib/format";
-import PageHeader, { RangePill } from "@/components/ui/PageHeader";
+import PageHeader from "@/components/ui/PageHeader";
+import PeriodFilter from "@/components/ui/PeriodFilter";
+import EmptyPeriod from "@/components/ui/EmptyPeriod";
 import ChartCard from "@/components/ui/ChartCard";
 import Insight, { Hi } from "@/components/ui/Insight";
 import CreativeCard from "@/components/CreativeCard";
@@ -31,9 +33,18 @@ export default function Criativos() {
     return { creatives, t, best, top: creatives[0] };
   }, [rows]);
 
+  if (!rows.length) {
+    return (
+      <div>
+        <PageHeader title="Criativos" meta={<PeriodFilter />} />
+        <EmptyPeriod />
+      </div>
+    );
+  }
+
   return (
     <div>
-      <PageHeader title="Criativos" meta={<RangePill>{creatives.length} anúncios ativos</RangePill>} />
+      <PageHeader title="Criativos" meta={<PeriodFilter />} />
 
       {/* Banner — count + summary */}
       <div className="card animate-in flex flex-col gap-6 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
