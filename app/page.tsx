@@ -77,6 +77,7 @@ export default function VisaoGeral() {
         <KpiCard
           value={brl(t.spend)}
           label="Investido"
+          sub={`Total com imposto (+12,5%) · ${brl(t.spend * 1.125)}`}
           accent="violet"
           metrics={[
             { label: "CPM", value: brl(t.cpm) },
